@@ -4,3 +4,23 @@ index-state:
   , hackage.haskell.org 2026-02-09T00:00:00Z
 
 packages: .
+
+if impl(ghc >= 9.14)
+   allow-newer:
+     -- https://github.com/haskell/aeson/issues/1155
+     aeson:containers,
+     aeson:template-haskell,
+     -- https://github.com/haskellari/indexed-traversable/issues/49
+     indexed-traversable:base,
+     indexed-traversable:containers,
+     indexed-traversable:template-haskell,
+     -- https://github.com/haskellari/indexed-traversable/issues/50
+     indexed-traversable-instances:base,
+     -- https://github.com/haskellari/these/issues/211
+     semialign:base,
+     semialign:containers,
+     these:base,
+     -- https://github.com/haskellari/time-compat/issues/48
+     time-compat:base,
+     -- https://github.com/haskell-hvr/uuid/issues/95
+     uuid-types:template-haskell

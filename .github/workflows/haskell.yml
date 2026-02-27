@@ -44,6 +44,10 @@ jobs:
           cabal: "3.12"
           os: ubuntu-24.04
           liburing: "2.14"
+        - ghc: "9.14"
+          cabal: "3.16"
+          os: ubuntu-22.04
+          liburing: "2.14"
 
     timeout-minutes: 30
 
