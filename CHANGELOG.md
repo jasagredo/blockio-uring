@@ -1,8 +1,9 @@
 # Revision history for blockio-uring
 
-## ?.?.?.? -- ????-??-??
+## 0.1.0.3 -- 2026-03-12
 
-* PATCH: support `ghc-9.14`.
+* PATCH: support `ghc-9.14`. See [PR
+  #53](https://github.com/well-typed/blockio-uring/pull/53).
 
 ## 0.1.0.2 -- 2025-09-22
 
