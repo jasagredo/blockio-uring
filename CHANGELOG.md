@@ -1,5 +1,9 @@
 # Revision history for blockio-uring
 
+## ?.?.?.? -- ????-??-??
+
+* PATCH: support `ghc-9.14`.
+
 ## 0.1.0.2 -- 2025-09-22
 
 * PATCH: support all `2.*` versions of `liburing`
