@@ -25,6 +25,9 @@ instance Storable URing where
 foreign import capi unsafe "liburing.h io_uring_queue_init"
   io_uring_queue_init :: CUInt -> Ptr URing -> CUInt -> IO CInt
 
+foreign import capi unsafe "liburing.h io_uring_set_iowait"
+  io_uring_set_iowait :: Ptr URing -> CBool -> IO CInt
+
 foreign import capi unsafe "liburing.h io_uring_queue_exit"
   io_uring_queue_exit :: Ptr URing -> IO ()
 
@@ -124,4 +127,3 @@ foreign import capi unsafe "liburing.h io_uring_peek_cqe"
 
 foreign import capi unsafe "liburing.h io_uring_cqe_seen"
   io_uring_cqe_seen :: Ptr URing -> Ptr URingCQE -> IO ()
-

@@ -63,6 +63,7 @@ setupURing URingParams { sizeSQRing, sizeCQRing } = do
           (fromIntegral sizeSQRing)
           uringptr
           paramsptr
+      throwErrnoResIfNeg_ "setIOWAIT" $ FFI.io_uring_set_iowait uringptr 0
       params' <- peek paramsptr
       -- liburing rounds up the size of the SQ ring to the nearest power of 2
       when (fromIntegral sizeSQRing > FFI.sq_entries params') $
@@ -231,6 +232,16 @@ throwErrnoResIfNegRetry_ label action = go
                    (Errno (-res))
                    Nothing Nothing
 
+throwErrnoResIfNeg_ :: String -> IO CInt -> IO ()
+throwErrnoResIfNeg_ label action = do
+  res <- action
+  when (res < 0) $
+    throwIO $
+      errnoToIOError
+      label
+      (Errno (-res))
+      Nothing Nothing
+
 throwErrResIfNull :: String -> IOErrorType -> String -> IO (Ptr a) -> IO (Ptr a)
 throwErrResIfNull location ioErrorType description action = do
     res <- action
@@ -243,4 +254,3 @@ throwErrResIfNull location ioErrorType description action = do
                  Nothing Nothing)
               description
       else return res
-
