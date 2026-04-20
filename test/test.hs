@@ -98,9 +98,9 @@ prop_ValidIOCtxParams params@IOCtxParams{..} =
     concurrencyLimitBoundsExcl batchSizeLimit =  (batchSizeLimit, 2^(16::Int))
 
 instance Arbitrary IOCtxParams where
-  arbitrary = IOCtxParams <$> genLimit <*> genLimit
-  shrink (IOCtxParams a b) =
-      [ IOCtxParams a' b' | (a', b') <- liftShrink2 shrinkLimit shrinkLimit (a, b) ]
+  arbitrary = IOCtxParams <$> genLimit <*> genLimit <*> pure True
+  shrink (IOCtxParams a b i) =
+      [ IOCtxParams a' b' i | (a', b') <- liftShrink2 shrinkLimit shrinkLimit (a, b) ]
 
 genLimit :: Gen Int
 genLimit = frequency [

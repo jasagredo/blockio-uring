@@ -122,7 +122,12 @@ data IOCtxParams = IOCtxParams {
     -- If a use of 'submitIO' would lead to this limit being exceeded, then the
     -- call to 'submitIO' will block until enough I/O batches have been
     -- processed.
-    ioctxConcurrencyLimit :: !Int
+    ioctxConcurrencyLimit :: !Int,
+
+    -- | If 'False', @io_uring_set_iowait(3)@ will be called to disable IOWAIT
+    -- accounting. This is innocuous in terms of performance but changes how CPU
+    -- idle time is reported.
+    ioctxSetIOWait :: !Bool
   }
   deriving stock Show
 
@@ -132,7 +137,8 @@ defaultIOCtxParams :: IOCtxParams
 defaultIOCtxParams =
   IOCtxParams {
     ioctxBatchSizeLimit   = 64,
-    ioctxConcurrencyLimit = 64 * 3
+    ioctxConcurrencyLimit = 64 * 3,
+    ioctxSetIOWait        = True
   }
 
 validateIOCtxParams :: IOCtxParams -> Maybe String
@@ -179,11 +185,13 @@ initIOCtx ioctxparams = do
 initIOCapCtx :: IOCtxParams -> CapNo -> IO IOCapCtx
 initIOCapCtx IOCtxParams {
                ioctxBatchSizeLimit,
-               ioctxConcurrencyLimit
+               ioctxConcurrencyLimit,
+               ioctxSetIOWait
              } capno = do
     mask_ $ do
       ioctxQSemN         <- newQSemN ioctxConcurrencyLimit
       uring              <- URing.setupURing (URing.URingParams ioctxBatchSizeLimit ioctxConcurrencyLimit)
+      when (not ioctxSetIOWait) $ URing.setIOWait uring ioctxSetIOWait
       ioctxURing         <- newMVar (Just uring)
       ioctxChanIOBatch   <- newChan
       ioctxChanIOBatchIx <- newChan

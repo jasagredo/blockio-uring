@@ -7,6 +7,7 @@ module System.IO.BlockIO.URing (
     setupURing,
     closeURing,
     withURing,
+    setIOWait,
     IOOpId(..),
     prepareRead,
     prepareWrite,
@@ -63,9 +64,6 @@ setupURing URingParams { sizeSQRing, sizeCQRing } = do
           (fromIntegral sizeSQRing)
           uringptr
           paramsptr
-      FFI.whenKernelVersionGtEq (6, 15) $
-        callIfSupported_ "setIOWAIT" $
-          FFI.io_uring_set_iowait uringptr 0
       params' <- peek paramsptr
       -- liburing rounds up the size of the SQ ring to the nearest power of 2
       when (fromIntegral sizeSQRing > FFI.sq_entries params') $
@@ -97,6 +95,11 @@ withURing :: URingParams -> (URing -> IO a) -> IO a
 withURing params =
     bracket (setupURing params) closeURing
 
+setIOWait :: URing -> Bool -> IO ()
+setIOWait URing {uringptr} b =
+  FFI.whenKernelVersionGtEq (6, 15) $
+    callIfSupported_ "setIOWAIT" $
+      FFI.io_uring_set_iowait uringptr (if b then 1 else 0)
 
 --
 -- Submitting I/O
