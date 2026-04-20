@@ -7,12 +7,16 @@
 
 module System.IO.BlockIO.URingFFI where
 
+import Control.Monad (when)
+import Data.Char (isDigit)
 import Foreign
 import Foreign.C
 import Prelude hiding (head, tail)
 import System.Posix.Types
+import Text.Read (readMaybe)
 
 #include <liburing.h>
+#include <sys/utsname.h>
 
 data {-# CTYPE "liburing.h" "struct io_uring" #-} URing = URing
 
@@ -24,9 +28,6 @@ instance Storable URing where
 
 foreign import capi unsafe "liburing.h io_uring_queue_init"
   io_uring_queue_init :: CUInt -> Ptr URing -> CUInt -> IO CInt
-
-foreign import capi unsafe "liburing.h io_uring_set_iowait"
-  io_uring_set_iowait :: Ptr URing -> CBool -> IO CInt
 
 foreign import capi unsafe "liburing.h io_uring_queue_exit"
   io_uring_queue_exit :: Ptr URing -> IO ()
@@ -127,3 +128,56 @@ foreign import capi unsafe "liburing.h io_uring_peek_cqe"
 
 foreign import capi unsafe "liburing.h io_uring_cqe_seen"
   io_uring_cqe_seen :: Ptr URing -> Ptr URingCQE -> IO ()
+
+
+--
+-- Calling @io_uring_set_iowait(3)@ if available
+--
+
+-- | Available only on liburing >= 2.10 and kernel >= 6.15.
+--
+-- See @io_uring_set_iowait(3)@ man page.
+#ifndef IO_URING_CHECK_VERSION
+#define IO_URING_CHECK_VERSION(a, b) 1   /* liburing < 2.2: doesn't have IO_URING_CHECK_VERSION, so we return TRUE always */
+#endif
+
+#if !IO_URING_CHECK_VERSION(2, 10)
+foreign import capi unsafe "liburing.h io_uring_set_iowait"
+  io_uring_set_iowait :: Ptr URing -> CBool -> IO CInt
+#else
+io_uring_set_iowait :: Ptr URing -> CBool -> IO CInt
+io_uring_set_iowait _ _ = pure #{const EOPNOTSUPP}
+#endif
+
+type Major = Int
+type Minor = Int
+
+foreign import capi unsafe "sys/utsname.h uname"
+  c_uname :: Ptr a -> IO CInt
+
+-- | Is the running kernel at version @major.minor@ or newer?
+--
+-- Returns 'False' if @uname(2)@ fails or the release string cannot be parsed.
+whenKernelVersionGtEq :: (Major, Minor) -> IO () -> IO ()
+whenKernelVersionGtEq (major, minor) action = do
+  isGtEq <- allocaBytes #{size struct utsname} $ \p -> do
+    res <- c_uname p
+    if res /= 0
+      then pure False
+      else do
+        release <- peekCString (p `plusPtr` #{offset struct utsname, release})
+        pure $ case parseKernelRelease release of
+          Just (kmaj, kmin) -> kmaj > major || (kmaj == major && kmin >= minor)
+          Nothing           -> False
+  when isGtEq action
+
+-- | Parse a kernel release string like @"6.15.0-22-generic"@ into
+-- @(major, minor)@. Returns 'Nothing' if the prefix doesn't match
+-- @DIGITS \".\" DIGITS@.
+parseKernelRelease :: String -> Maybe (Major, Minor)
+parseKernelRelease s =
+  case break (== '.') s of
+    (majS, '.':rest) -> do
+      let minS = takeWhile isDigit rest
+      (,) <$> readMaybe majS <*> readMaybe minS
+    _ -> Nothing
