@@ -29,7 +29,7 @@ import qualified Data.Vector.Unboxed.Mutable as VUM
 import Control.Monad
 import Control.Monad.Primitive
 import Control.Concurrent (forkOn, myThreadId, threadCapability,
-                           getNumCapabilities)
+                           getNumCapabilities, runInBoundThread)
 import Control.Concurrent.MVar
 import Control.Concurrent.QSemN
 import Control.Concurrent.Chan
@@ -299,7 +299,7 @@ submitCapIO :: IOCapCtx -> V.Vector (IOOp RealWorld) -> IO (VU.Vector IOResult)
 submitCapIO ioctx@IOCapCtx {ioctxBatchSizeLimit'} !ioops
     -- Typical small case. We can be more direct.
   | V.length ioops > 0 && V.length ioops <= ioctxBatchSizeLimit'
-  = mask_ $ do
+  = runInBoundThread $ mask_ $ do
       iobatchCompletion <- newEmptyMVar
       prepAndSubmitIOBatch ioctx ioops iobatchCompletion
       takeMVar iobatchCompletion
@@ -313,7 +313,7 @@ submitCapIO ioctx@IOCapCtx {ioctxBatchSizeLimit'} !ioops0 =
     -- fill them in. Then for batches we can send in a bunch of slices of
     -- a contiguous array, and then we can avoid having to re-combine them
     -- at the end here.
-    mask_ $ do
+    runInBoundThread $ mask_ $ do
       iobatchCompletions <- prepAndSubmitIOBatches [] ioops0
       awaitIOBatches iobatchCompletions
   where
